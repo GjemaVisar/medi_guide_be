@@ -1,0 +1,24 @@
+# Build Folders
+bin/
+obj/
+
+# Visual Studio temporary files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+packages/
+
+# Logs
+*.log
+
+# OS Files
+Thumbs.db
+Desktop.ini
+
+# Ignore secrets / env files if you have them
+*.env

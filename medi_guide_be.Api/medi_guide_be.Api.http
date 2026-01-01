@@ -1,0 +1,6 @@
+@medi_guide_be.Api_HostAddress = http://localhost:5194
+
+GET {{medi_guide_be.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

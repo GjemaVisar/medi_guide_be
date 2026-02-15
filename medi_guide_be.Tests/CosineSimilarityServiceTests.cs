@@ -71,14 +71,12 @@ public class CosineSimilarityServiceTests
         // Act: user selects s0, s1, s2
         var result = await _sut.GetTopMatchesAsync(new[] { "s0", "s1", "s2" }, topN: 10);
 
-        // Assert: order must be A (1.0), B (2/sqrt(6)), C (0)
-        Assert.Equal(3, result.Count);
+        // Assert: order must be A (1.0), B (2/sqrt(6)); C (0) is excluded (zero-score entries are skipped)
+        Assert.Equal(2, result.Count);
         Assert.Equal("idA", result[0].DiseaseId);
         Assert.Equal(1.0, result[0].SimilarityScore, precision: 5);
         Assert.Equal("idB", result[1].DiseaseId);
         Assert.Equal(2.0 / Math.Sqrt(6), result[1].SimilarityScore, precision: 5);
-        Assert.Equal("idC", result[2].DiseaseId);
-        Assert.Equal(0, result[2].SimilarityScore, precision: 5);
     }
 
     [Fact]

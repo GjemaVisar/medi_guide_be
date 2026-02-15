@@ -10,11 +10,16 @@ namespace medi_guide_be.Api.Controllers;
 public class DiseasesController : ControllerBase
 {
     private readonly IDiseaseVectorRepository _diseaseVectorRepository;
+    private readonly IDiseaseRepository _diseaseRepository;
     private readonly IDiseaseSimilarityService _similarityService;
 
-    public DiseasesController(IDiseaseVectorRepository diseaseVectorRepository, IDiseaseSimilarityService similarityService)
+    public DiseasesController(
+        IDiseaseVectorRepository diseaseVectorRepository,
+        IDiseaseRepository diseaseRepository,
+        IDiseaseSimilarityService similarityService)
     {
         _diseaseVectorRepository = diseaseVectorRepository;
+        _diseaseRepository = diseaseRepository;
         _similarityService = similarityService;
     }
 
@@ -23,6 +28,13 @@ public class DiseasesController : ControllerBase
     {
         var symptoms = await _diseaseVectorRepository.GetAllSymptomNamesAsync(cancellationToken);
         return Ok(symptoms);
+    }
+
+    [HttpGet("names")]
+    public async Task<ActionResult<List<string>>> GetAllDiseaseNames()
+    {
+        var diseases = await _diseaseRepository.GetAllDiseaseNamesAsync();
+        return Ok(diseases);
     }
 
     [HttpPost("selectedSymptoms")]
@@ -41,6 +53,7 @@ public class DiseasesController : ControllerBase
 
         var response = matches.Select(m => new
         {
+            diseaseId = m.DiseaseId,
             diseaseName = m.DiseaseName,
             similarityScore = Math.Round(m.SimilarityScore, 2)
         }).ToList();

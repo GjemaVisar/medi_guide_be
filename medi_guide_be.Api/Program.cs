@@ -3,6 +3,7 @@ using medi_guide_be.Domain.Services;
 using medi_guide_be.Infrastructure.Data;
 using medi_guide_be.Infrastructure.Repositories;
 using medi_guide_be.Infrastructure.Services;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,8 +14,12 @@ var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"]
 
 builder.Services.AddSingleton<MongoDbContext>(sp =>
     new MongoDbContext(mongoConnectionString, mongoDatabaseName));
+builder.Services.AddSingleton<KosovoHospitalsDbContext>(sp =>
+    new KosovoHospitalsDbContext(sp.GetRequiredService<IConfiguration>()));
 
 builder.Services.AddScoped<IDiseaseVectorRepository, DiseaseVectorRepository>();
+builder.Services.AddScoped<IDiseaseRepository, DiseaseRepository>();
+builder.Services.AddScoped<IKosovoHospitalRepository, KosovoHospitalRepository>();
 builder.Services.AddScoped<IDiseaseSimilarityService, CosineSimilarityService>();
 builder.Services.AddHostedService<CacheWarmupService>();
 

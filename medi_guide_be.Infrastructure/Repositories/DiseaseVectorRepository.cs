@@ -12,27 +12,36 @@ public class DiseaseVectorRepository : IDiseaseVectorRepository
     private const string IdField = "_id";
     private readonly IMongoCollection<BsonDocument> _collection;
 
+    // Cache symptom keys in memory so every method reuses the same array
+    // and we only query MongoDB for them once per repository instance.
+    private string[]? _symptomKeys;
+
     public DiseaseVectorRepository(MongoDbContext context)
     {
         _collection = context.GetCollection<BsonDocument>("diseases");
     }
 
+    public async Task<IReadOnlyList<string>> GetAllSymptomNamesAsync(CancellationToken cancellationToken = default)
+    {
+        return await GetSymptomKeysAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<string, int>> GetSymptomToIndexMapAsync(CancellationToken cancellationToken = default)
     {
-        var orderedKeys = await GetOrderedSymptomKeysAsync(cancellationToken);
-        var map = new Dictionary<string, int>(orderedKeys.Length, StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < orderedKeys.Length; i++)
-            map[orderedKeys[i].Trim().ToLowerInvariant()] = i;
+        var keys = await GetSymptomKeysAsync(cancellationToken);
+        var map = new Dictionary<string, int>(keys.Length, StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < keys.Length; i++)
+            map[keys[i].Trim().ToLowerInvariant()] = i;
         return map;
     }
 
     public async Task<IReadOnlyList<DiseaseVectorRecord>> GetAllDiseaseVectorsAsync(CancellationToken cancellationToken = default)
     {
-        var orderedKeys = await GetOrderedSymptomKeysAsync(cancellationToken);
-        var vectorLength = orderedKeys.Length;
+        var keys = await GetSymptomKeysAsync(cancellationToken);
+        var vectorLength = keys.Length;
 
         var cursor = await _collection.Find(FilterDefinition<BsonDocument>.Empty).ToCursorAsync(cancellationToken);
-        var results = new List<DiseaseVectorRecord>();
+        var results = new List<DiseaseVectorRecord>(4096);
 
         while (await cursor.MoveNextAsync(cancellationToken))
         {
@@ -45,19 +54,19 @@ public class DiseaseVectorRepository : IDiseaseVectorRepository
                 var ones = 0;
                 for (var i = 0; i < vectorLength; i++)
                 {
-                    var key = orderedKeys[i];
-                    var val = 0;
-                    if (doc.Contains(key))
+                    if (doc.TryGetValue(keys[i], out var elem))
                     {
-                        var elem = doc[key];
-                        if (elem.BsonType == BsonType.Int32)
-                            val = elem.AsInt32;
-                        else if (elem.BsonType == BsonType.Double)
-                            val = (int)elem.AsDouble;
+                        var val = elem.BsonType == BsonType.Int32 ? elem.AsInt32
+                                : elem.BsonType == BsonType.Double ? (int)elem.AsDouble
+                                : 0;
+                        if (val != 0)
+                        {
+                            vector[i] = 1;
+                            ones++;
+                        }
                     }
-                    vector[i] = (byte)(val != 0 ? 1 : 0);
-                    if (vector[i] == 1) ones++;
                 }
+
                 var magnitude = ones > 0 ? Math.Sqrt(ones) : 0;
                 results.Add(new DiseaseVectorRecord(id, name, vector, magnitude));
             }
@@ -66,18 +75,19 @@ public class DiseaseVectorRepository : IDiseaseVectorRepository
         return results;
     }
 
-    private async Task<string[]> GetOrderedSymptomKeysAsync(CancellationToken cancellationToken)
+    private async Task<string[]> GetSymptomKeysAsync(CancellationToken cancellationToken)
     {
+        if (_symptomKeys is not null)
+            return _symptomKeys;
+
         var sample = await _collection
             .Find(FilterDefinition<BsonDocument>.Empty)
             .FirstOrDefaultAsync(cancellationToken);
-        if (sample == null)
-            return [];
 
-        var keys = sample.Names
+        _symptomKeys = sample?.Names
             .Where(n => n != IdField && n != DiseasesField)
-            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        return keys;
+            .ToArray() ?? [];
+
+        return _symptomKeys;
     }
 }

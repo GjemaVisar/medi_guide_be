@@ -9,20 +9,20 @@ namespace medi_guide_be.Api.Controllers;
 [Route("api/[controller]")]
 public class DiseasesController : ControllerBase
 {
-    private readonly IDiseaseRepository _diseaseRepository;
+    private readonly IDiseaseVectorRepository _diseaseVectorRepository;
     private readonly IDiseaseSimilarityService _similarityService;
 
-    public DiseasesController(IDiseaseRepository diseaseRepository, IDiseaseSimilarityService similarityService)
+    public DiseasesController(IDiseaseVectorRepository diseaseVectorRepository, IDiseaseSimilarityService similarityService)
     {
-        _diseaseRepository = diseaseRepository;
+        _diseaseVectorRepository = diseaseVectorRepository;
         _similarityService = similarityService;
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<string>>> GetAllDiseases()
+    public async Task<ActionResult<IReadOnlyList<string>>> GetAllSymptoms(CancellationToken cancellationToken = default)
     {
-        var diseases = await _diseaseRepository.GetAllDiseaseNamesAsync();
-        return Ok(diseases);
+        var symptoms = await _diseaseVectorRepository.GetAllSymptomNamesAsync(cancellationToken);
+        return Ok(symptoms);
     }
 
     [HttpPost("selectedSymptoms")]

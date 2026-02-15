@@ -14,9 +14,9 @@ var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"]
 builder.Services.AddSingleton<MongoDbContext>(sp =>
     new MongoDbContext(mongoConnectionString, mongoDatabaseName));
 
-builder.Services.AddScoped<IDiseaseRepository, DiseaseRepository>();
 builder.Services.AddScoped<IDiseaseVectorRepository, DiseaseVectorRepository>();
 builder.Services.AddScoped<IDiseaseSimilarityService, CosineSimilarityService>();
+builder.Services.AddHostedService<CacheWarmupService>();
 
 builder.Services.AddCors(options =>
 {

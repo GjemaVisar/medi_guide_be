@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using medi_guide_be.Domain.Entities;
 using medi_guide_be.Domain.Repositories;
 using medi_guide_be.Domain.Services;
@@ -19,6 +18,12 @@ public class CosineSimilarityService : IDiseaseSimilarityService
     {
         _diseaseVectorRepository = diseaseVectorRepository;
         _cache = cache;
+    }
+
+    public async Task WarmUpAsync(CancellationToken cancellationToken = default)
+    {
+        await GetCachedSymptomIndexAsync(cancellationToken);
+        await GetCachedDiseaseVectorsAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<DiseaseMatch>> GetTopMatchesAsync(
@@ -43,30 +48,40 @@ public class CosineSimilarityService : IDiseaseSimilarityService
         if (diseases.Count == 0)
             return Array.Empty<DiseaseMatch>();
 
-        var results = new DiseaseMatch[diseases.Count];
+        // Score every disease record in parallel
+        var scores = new DiseaseMatch[diseases.Count];
 
-        Parallel.ForEach(
-            Partitioner.Create(0, diseases.Count),
+        Parallel.For(0, diseases.Count,
             new ParallelOptions { CancellationToken = cancellationToken },
-            range =>
+            i =>
             {
-                for (var i = range.Item1; i < range.Item2; i++)
-                {
-                    var d = diseases[i];
-                    var dot = 0;
-                    foreach (var idx in userIndices)
-                        dot += d.Vector[idx];
-                    var sim = userMagnitude > 0 && d.Magnitude > 0
-                        ? dot / (userMagnitude * d.Magnitude)
-                        : 0d;
-                    results[i] = new DiseaseMatch(d.Id, d.Name, sim);
-                }
+                var d = diseases[i];
+                var dot = 0;
+                foreach (var idx in userIndices)
+                    dot += d.Vector[idx];
+
+                var sim = dot > 0 && d.Magnitude > 0
+                    ? dot / (userMagnitude * d.Magnitude)
+                    : 0d;
+
+                scores[i] = new DiseaseMatch(d.Id, d.Name, sim);
             });
 
-        // Deduplicate by disease name: keep best score per disease so we return distinct diseases
-        return results
-            .GroupBy(r => r.DiseaseName, StringComparer.OrdinalIgnoreCase)
-            .Select(g => g.OrderByDescending(x => x.SimilarityScore).First())
+        // Deduplicate: keep highest score per disease, skip zero-score entries
+        var best = new Dictionary<string, DiseaseMatch>(StringComparer.OrdinalIgnoreCase);
+        foreach (var m in scores)
+        {
+            if (m.SimilarityScore <= 0)
+                continue;
+
+            if (!best.TryGetValue(m.DiseaseName, out var existing) ||
+                m.SimilarityScore > existing.SimilarityScore)
+            {
+                best[m.DiseaseName] = m;
+            }
+        }
+
+        return best.Values
             .OrderByDescending(r => r.SimilarityScore)
             .Take(topN)
             .ToList();

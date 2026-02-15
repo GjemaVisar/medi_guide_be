@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -9,7 +9,9 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="NSubstitute" Version="5.1.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
@@ -21,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\medi_guide_be.Domain\medi_guide_be.Domain.csproj" />
     <ProjectReference Include="..\medi_guide_be.Application\medi_guide_be.Application.csproj" />
+    <ProjectReference Include="..\medi_guide_be.Infrastructure\medi_guide_be.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

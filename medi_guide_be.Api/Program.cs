@@ -1,23 +1,33 @@
 using medi_guide_be.Domain.Repositories;
+using medi_guide_be.Domain.Services;
 using medi_guide_be.Infrastructure.Data;
 using medi_guide_be.Infrastructure.Repositories;
+using medi_guide_be.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// MongoDB Configuration
-var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDB") 
+var mongoConnectionString = builder.Configuration.GetConnectionString("MongoDB")
     ?? "mongodb://localhost:27017";
-var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"] 
+var mongoDatabaseName = builder.Configuration["MongoDB:DatabaseName"]
     ?? "disease-dataset";
 
-// Register MongoDB Context
-builder.Services.AddSingleton<MongoDbContext>(sp => 
+builder.Services.AddSingleton<MongoDbContext>(sp =>
     new MongoDbContext(mongoConnectionString, mongoDatabaseName));
 
-// Register Repositories
-builder.Services.AddScoped<IDiseaseRepository, DiseaseRepository>();
+builder.Services.AddScoped<IDiseaseVectorRepository, DiseaseVectorRepository>();
+builder.Services.AddScoped<IDiseaseSimilarityService, CosineSimilarityService>();
+builder.Services.AddHostedService<CacheWarmupService>();
 
-// Add services to the container
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngularApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -25,13 +35,15 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowAngularApp");
+
 app.UseAuthorization();
 app.MapControllers();
 

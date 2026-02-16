@@ -3,6 +3,7 @@ using medi_guide_be.Domain.Services;
 using medi_guide_be.Infrastructure.Data;
 using medi_guide_be.Infrastructure.Repositories;
 using medi_guide_be.Infrastructure.Services;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +39,11 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedProto
+});
 
 app.MapOpenApi();
 app.UseSwaggerUI(options =>

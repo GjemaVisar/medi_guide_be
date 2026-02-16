@@ -50,8 +50,7 @@ public class DiseaseVectorRepository : IDiseaseVectorRepository
                 var id = doc[IdField].ToString();
                 var name = doc.Contains(DiseasesField) ? doc[DiseasesField].AsString : string.Empty;
 
-                var vector = new byte[vectorLength];
-                var ones = 0;
+                var active = new List<int>();
                 for (var i = 0; i < vectorLength; i++)
                 {
                     if (doc.TryGetValue(keys[i], out var elem))
@@ -60,15 +59,12 @@ public class DiseaseVectorRepository : IDiseaseVectorRepository
                                 : elem.BsonType == BsonType.Double ? (int)elem.AsDouble
                                 : 0;
                         if (val != 0)
-                        {
-                            vector[i] = 1;
-                            ones++;
-                        }
+                            active.Add(i);
                     }
                 }
 
-                var magnitude = ones > 0 ? Math.Sqrt(ones) : 0;
-                results.Add(new DiseaseVectorRecord(id, name, vector, magnitude));
+                var magnitude = active.Count > 0 ? Math.Sqrt(active.Count) : 0;
+                results.Add(new DiseaseVectorRecord(id, name, active.ToArray(), magnitude));
             }
         }
 

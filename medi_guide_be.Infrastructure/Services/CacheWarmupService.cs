@@ -22,19 +22,30 @@ public class CacheWarmupService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        try
-        {
-            _logger.LogInformation("Cache warm-up started...");
+        const int maxRetries = 3;
 
-            using var scope = _serviceProvider.CreateScope();
-            var service = scope.ServiceProvider.GetRequiredService<IDiseaseSimilarityService>();
-            await service.WarmUpAsync(stoppingToken);
-
-            _logger.LogInformation("Cache warm-up completed.");
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
-            _logger.LogError(ex, "Cache warm-up failed. First request will load data on demand.");
+            try
+            {
+                _logger.LogInformation("Cache warm-up started (attempt {Attempt}/{Max})...", attempt, maxRetries);
+
+                using var scope = _serviceProvider.CreateScope();
+                var service = scope.ServiceProvider.GetRequiredService<IDiseaseSimilarityService>();
+                await service.WarmUpAsync(stoppingToken);
+
+                _logger.LogInformation("Cache warm-up completed.");
+                return;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Cache warm-up attempt {Attempt}/{Max} failed.", attempt, maxRetries);
+
+                if (attempt < maxRetries)
+                    await Task.Delay(TimeSpan.FromSeconds(attempt * 2), stoppingToken);
+                else
+                    _logger.LogError(ex, "Cache warm-up failed after {Max} attempts. First request will load data on demand.", maxRetries);
+            }
         }
     }
 }

@@ -33,6 +33,13 @@ builder.Services.AddCors(options => {
     });
 });
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -40,18 +47,13 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedProto
-});
+app.UseForwardedHeaders();
 
 app.MapOpenApi();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/openapi/v1.json", "MediGuide API");
 });
-
-app.UseHttpsRedirection();
 
 app.UseCors("AllowAngularApp");
 

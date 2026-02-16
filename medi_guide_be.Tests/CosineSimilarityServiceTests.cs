@@ -27,11 +27,11 @@ public class CosineSimilarityServiceTests
         {
             ["s0"] = 0, ["s1"] = 1, ["s2"] = 2
         };
-        var activeIndicesFull = new int[] { 0, 1, 2 }; // magnitude = sqrt(3)
+        var vectorFullMatch = new byte[] { 1, 1, 1 }; // magnitude = sqrt(3)
         var magnitudeFull = Math.Sqrt(3);
         var diseases = new List<DiseaseVectorRecord>
         {
-            new("id1", "FullMatch", activeIndicesFull, magnitudeFull)
+            new("id1", "FullMatch", vectorFullMatch, magnitudeFull)
         };
 
         _repository.GetSymptomToIndexMapAsync(Arg.Any<CancellationToken>()).Returns(symptomIndex);
@@ -55,14 +55,14 @@ public class CosineSimilarityServiceTests
         {
             ["s0"] = 0, ["s1"] = 1, ["s2"] = 2
         };
-        // Disease A: active=[0,1,2] mag=sqrt(3) -> dot=3, cos=3/(sqrt(3)*sqrt(3))=1.0
-        // Disease B: active=[0,1]   mag=sqrt(2) -> dot=2, cos=2/(sqrt(3)*sqrt(2))=2/sqrt(6)
-        // Disease C: active=[]      mag=0       -> similarity 0
+        // Disease A: [1,1,1] mag=sqrt(3)  -> dot=3, cos=3/(sqrt(3)*sqrt(3))=1.0
+        // Disease B: [1,1,0] mag=sqrt(2)  -> dot=2, cos=2/(sqrt(3)*sqrt(2))=2/sqrt(6)
+        // Disease C: [0,0,0] mag=0        -> similarity 0
         var diseases = new List<DiseaseVectorRecord>
         {
-            new("idA", "DiseaseA", new int[] { 0, 1, 2 }, Math.Sqrt(3)),
-            new("idB", "DiseaseB", new int[] { 0, 1 }, Math.Sqrt(2)),
-            new("idC", "DiseaseC", Array.Empty<int>(), 0)
+            new("idA", "DiseaseA", new byte[] { 1, 1, 1 }, Math.Sqrt(3)),
+            new("idB", "DiseaseB", new byte[] { 1, 1, 0 }, Math.Sqrt(2)),
+            new("idC", "DiseaseC", new byte[] { 0, 0, 0 }, 0)
         };
 
         _repository.GetSymptomToIndexMapAsync(Arg.Any<CancellationToken>()).Returns(symptomIndex);
@@ -86,11 +86,11 @@ public class CosineSimilarityServiceTests
         var symptomIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["s0"] = 0 };
         var diseases = new List<DiseaseVectorRecord>
         {
-            new("1", "D1", new int[] { 0 }, 1),
-            new("2", "D2", new int[] { 0 }, 1),
-            new("3", "D3", new int[] { 0 }, 1),
-            new("4", "D4", Array.Empty<int>(), 0),
-            new("5", "D5", Array.Empty<int>(), 0)
+            new("1", "D1", new byte[] { 1 }, 1),
+            new("2", "D2", new byte[] { 1 }, 1),
+            new("3", "D3", new byte[] { 1 }, 1),
+            new("4", "D4", new byte[] { 0 }, 0),
+            new("5", "D5", new byte[] { 0 }, 0)
         };
         _repository.GetSymptomToIndexMapAsync(Arg.Any<CancellationToken>()).Returns(symptomIndex);
         _repository.GetAllDiseaseVectorsAsync(Arg.Any<CancellationToken>()).Returns(diseases);
@@ -137,7 +137,7 @@ public class CosineSimilarityServiceTests
         var symptomIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["s0"] = 0 };
         var diseases = new List<DiseaseVectorRecord>
         {
-            new("id1", "D1", new int[] { 0 }, 1.0)
+            new("id1", "D1", new byte[] { 1 }, 1.0)
         };
         _repository.GetSymptomToIndexMapAsync(Arg.Any<CancellationToken>()).Returns(symptomIndex);
         _repository.GetAllDiseaseVectorsAsync(Arg.Any<CancellationToken>()).Returns(diseases);
@@ -172,7 +172,7 @@ public class CosineSimilarityServiceTests
         var symptomIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["a"] = 0, ["b"] = 1 };
         var diseases = new List<DiseaseVectorRecord>
         {
-            new("id1", "D1", new int[] { 0, 1 }, Math.Sqrt(2))
+            new("id1", "D1", new byte[] { 1, 1 }, Math.Sqrt(2))
         };
         _repository.GetSymptomToIndexMapAsync(Arg.Any<CancellationToken>()).Returns(symptomIndex);
         _repository.GetAllDiseaseVectorsAsync(Arg.Any<CancellationToken>()).Returns(diseases);

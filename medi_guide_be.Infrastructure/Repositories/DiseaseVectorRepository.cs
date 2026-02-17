@@ -8,17 +8,14 @@ namespace medi_guide_be.Infrastructure.Repositories;
 
 public class DiseaseVectorRepository : IDiseaseVectorRepository
 {
-    private const string DiseasesField = "diseases";
-    private const string IdField = "_id";
+    private const string MetadataId = "metadata";
     private readonly IMongoCollection<BsonDocument> _collection;
 
-    // Cache symptom keys in memory so every method reuses the same array
-    // and we only query MongoDB for them once per repository instance.
     private string[]? _symptomKeys;
 
     public DiseaseVectorRepository(MongoDbContext context)
     {
-        _collection = context.GetCollection<BsonDocument>("diseases");
+        _collection = context.GetCollection<BsonDocument>("precomputed_vectors");
     }
 
     public async Task<IReadOnlyList<string>> GetAllSymptomNamesAsync(CancellationToken cancellationToken = default)
@@ -40,34 +37,34 @@ public class DiseaseVectorRepository : IDiseaseVectorRepository
         var keys = await GetSymptomKeysAsync(cancellationToken);
         var vectorLength = keys.Length;
 
-        var cursor = await _collection.Find(FilterDefinition<BsonDocument>.Empty).ToCursorAsync(cancellationToken);
+        var filter = Builders<BsonDocument>.Filter.Ne("_id", MetadataId);
+        var projection = Builders<BsonDocument>.Projection
+            .Include("disease_name")
+            .Include("active_indices")
+            .Include("magnitude");
+
+        var cursor = await _collection
+            .Find(filter)
+            .Project(projection)
+            .ToCursorAsync(cancellationToken);
+
         var results = new List<DiseaseVectorRecord>(4096);
 
         while (await cursor.MoveNextAsync(cancellationToken))
         {
             foreach (var doc in cursor.Current)
             {
-                var id = doc[IdField].ToString();
-                var name = doc.Contains(DiseasesField) ? doc[DiseasesField].AsString : string.Empty;
+                var id = doc["_id"].ToString()!;
+                var name = doc.Contains("disease_name") ? doc["disease_name"].AsString : string.Empty;
+                var magnitude = doc.Contains("magnitude") ? doc["magnitude"].ToDouble() : 0;
 
                 var vector = new byte[vectorLength];
-                var ones = 0;
-                for (var i = 0; i < vectorLength; i++)
+                if (doc.Contains("active_indices"))
                 {
-                    if (doc.TryGetValue(keys[i], out var elem))
-                    {
-                        var val = elem.BsonType == BsonType.Int32 ? elem.AsInt32
-                                : elem.BsonType == BsonType.Double ? (int)elem.AsDouble
-                                : 0;
-                        if (val != 0)
-                        {
-                            vector[i] = 1;
-                            ones++;
-                        }
-                    }
+                    foreach (var idx in doc["active_indices"].AsBsonArray)
+                        vector[idx.AsInt32] = 1;
                 }
 
-                var magnitude = ones > 0 ? Math.Sqrt(ones) : 0;
                 results.Add(new DiseaseVectorRecord(id, name, vector, magnitude));
             }
         }
@@ -80,12 +77,14 @@ public class DiseaseVectorRepository : IDiseaseVectorRepository
         if (_symptomKeys is not null)
             return _symptomKeys;
 
-        var sample = await _collection
-            .Find(FilterDefinition<BsonDocument>.Empty)
+        var filter = Builders<BsonDocument>.Filter.Eq("_id", MetadataId);
+        var metadataDoc = await _collection
+            .Find(filter)
             .FirstOrDefaultAsync(cancellationToken);
 
-        _symptomKeys = sample?.Names
-            .Where(n => n != IdField && n != DiseasesField)
+        _symptomKeys = metadataDoc?["symptom_keys"]
+            .AsBsonArray
+            .Select(v => v.AsString)
             .ToArray() ?? [];
 
         return _symptomKeys;

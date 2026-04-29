@@ -9,7 +9,7 @@ public class CosineSimilarityService : IDiseaseSimilarityService
 {
     private const string VectorsCacheKey = "disease_vectors";
     private const string IndexCacheKey = "symptom_index";
-    private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(24);
+    private static readonly TimeSpan CacheExpiration = TimeSpan.FromDays(30);
 
     private readonly IDiseaseVectorRepository _diseaseVectorRepository;
     private readonly IMemoryCache _cache;

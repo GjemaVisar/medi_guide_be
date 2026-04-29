@@ -11,7 +11,7 @@ public class DiseaseRepository : IDiseaseRepository
     private readonly IMongoCollection<BsonDocument> _collection;
     private readonly IMemoryCache _cache;
     private const string CacheKey = "all_disease_names";
-    private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(24); // Cache for 24 hours
+    private static readonly TimeSpan CacheExpiration = TimeSpan.FromDays(30); // Cache for 24 hours
 
     public DiseaseRepository(MongoDbContext context, IMemoryCache cache)
     {
